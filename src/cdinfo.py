@@ -23,6 +23,7 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
         self.cbMultiDisc.setVisible(disc.discs > 1)
         self.cbMultiDisc.setChecked(disc.discs > 1)
 
+        self.trackNames = []
         for t in disc.tracks:
             lbl = QLabel(self)
             lbl.setText(f"Track {t.trackno}")
@@ -32,10 +33,23 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
 
             self.infoPane.addWidget(lbl, t.trackno + 2, 0)
             self.infoPane.addWidget(le, t.trackno + 2, 1, 1, 3)
+            self.trackNames.append(le)
 
         util.restore_ui(self, "cdinfo")
 
+    @property
+    def rip_as_multi_disc(self):
+        return self.cbMultiDisc.isChecked()
+
     def _go(self):
         util.save_ui(self, "cdinfo")
-        # TODO
+
+        d = self.disc
+        d.artist = self.leArtist.text()
+        d.album = self.leAlbum.text()
+        d.year = int(self.leYear.text())
+
+        for i in range(len(d.tracks)):
+            d.tracks[i].title = self.trackNames[i].text()
+
         self.accept()
