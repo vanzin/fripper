@@ -25,6 +25,7 @@ class CDInfo:
     album: str
     tracks: list
     discno: int
+    discs: int
     year: int
 
 
@@ -98,6 +99,7 @@ def get_cd_info(discid):
 
     rel = releases[0]
 
+    disc_count = len(rel["medium-list"])
     for disc in rel["medium-list"]:
         if disc["disc-list"][0]["id"] == discid:
             discno = int(disc["position"])
@@ -136,11 +138,14 @@ def get_cd_info(discid):
         )
         atracks.append(track)
 
+    atracks = sorted(atracks, key=lambda t: t.trackno)
+
     return CDInfo(
         artist=artist,
         album=album,
         tracks=atracks,
         discno=discno,
+        discs=disc_count,
         year=year,
     )
 

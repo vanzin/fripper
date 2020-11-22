@@ -150,6 +150,13 @@
            </layout>
           </item>
           <item>
+           <widget class="QCheckBox" name="cbMultiDisc">
+            <property name="text">
+             <string>Include disc number in album path</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="verticalSpacer_2">
             <property name="orientation">
              <enum>Qt::Vertical</enum>

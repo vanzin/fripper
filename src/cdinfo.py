@@ -20,10 +20,10 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
         self.leYear.setText(str(disc.year))
         self.leDisc.setText(str(disc.discno))
 
-        tracks = disc.tracks
-        tracks = sorted(tracks, key=lambda t: t.trackno)
+        self.cbMultiDisc.setVisible(disc.discs > 1)
+        self.cbMultiDisc.setChecked(disc.discs > 1)
 
-        for t in tracks:
+        for t in disc.tracks:
             lbl = QLabel(self)
             lbl.setText(f"Track {t.trackno}")
 
@@ -33,6 +33,9 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
             self.infoPane.addWidget(lbl, t.trackno + 2, 0)
             self.infoPane.addWidget(le, t.trackno + 2, 1, 1, 3)
 
+        util.restore_ui(self, "cdinfo")
+
     def _go(self):
+        util.save_ui(self, "cdinfo")
         # TODO
         self.accept()

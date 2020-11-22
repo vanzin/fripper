@@ -4,6 +4,7 @@ import detect
 DISC = detect.CDInfo(
     artist="The Ocean",
     album="Precambrian",
+    discs=2,
     discno=2,
     year=2007,
     tracks=[

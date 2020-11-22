@@ -22,3 +22,19 @@ def compile_ui(src):
             self.setupUi(self)
 
     return _WidgetBase
+
+
+def restore_ui(widget, name):
+    data = SETTINGS.value(f"{name}/geometry")
+    if data:
+        widget.restoreGeometry(data)
+
+    data = SETTINGS.value(f"{name}/windowState")
+    if data:
+        widget.restoreState(data)
+
+
+def save_ui(widget, name):
+    SETTINGS.setValue(f"{name}/geometry", widget.saveGeometry())
+    if hasattr(widget, "saveState"):
+        SETTINGS.setValue(f"{name}/windowState", widget.saveState())

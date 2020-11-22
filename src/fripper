@@ -45,7 +45,9 @@ def main(argv):
     app.setWindowIcon(QIcon(util.icon("fripper.png")))
     QTimer.singleShot(0, lambda: ripper.rip(app, disc))
 
-    sys.exit(app.exec_())
+    ec = app.exec_()
+    util.SETTINGS.sync()
+    sys.exit(ec)
 
 
 if __name__ == "__main__":
