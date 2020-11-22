@@ -9,6 +9,7 @@ import util
 from PyQt5.QtCore import QThread
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QDialog
+from PyQt5.QtWidgets import QMessageBox
 
 EXT = "mp3"
 
@@ -21,6 +22,8 @@ class Config:
 
 
 class RipperDialog(util.compile_ui("ripper.ui")):
+    error = pyqtSignal(str)
+
     def __init__(self, disc, config, workdir):
         super().__init__()
         self.disc = disc
@@ -38,10 +41,16 @@ class RipperDialog(util.compile_ui("ripper.ui")):
 
         self.rip_thread = RipperThread(disc, config, workdir, self)
         self.rip_thread.progress.connect(self._rip_progress)
+        self.rip_thread.finished.connect(self._child_done)
 
         self.encoder_thread = EncodeThread(disc, config, workdir, self)
         self.encoder_thread.progress.connect(self._encode_progress)
+        self.encoder_thread.finished.connect(self._child_done)
         self.rip_thread.progress.connect(self.encoder_thread.enqueue)
+
+        self._done = 0
+        self.errors = []
+        self.error.connect(self._error)
 
         self.rip_done = 0
         self.encode_done = 0
@@ -71,10 +80,24 @@ class RipperDialog(util.compile_ui("ripper.ui")):
         self.encode_done += 1
         self.pbEncoder.setValue(self.encode_done)
         self._set_progress(self.lEncoderCompleted, self.encode_done)
-
         self.encoded.append(fname)
-        if self.encode_done == len(self.disc.tracks):
+
+    def _error(self, msg):
+        self.errors.append(msg)
+
+    def _child_done(self):
+        self._done += 1
+        if self._done != 2:
+            return
+
+        if not self.errors:
             self.accept()
+            return
+
+        errs = ["Errors occurred during ripping / encoding:"] + self._errors
+        msg = "\n".join(errs)
+        QMessageBox.critical(self, "Error", msg)
+        self.reject()
 
 
 class RipperThread(QThread):
@@ -121,6 +144,7 @@ class EncodeThread(QThread):
             target = f"{next}.{EXT}"
             # TODO: encode / tag next
             self.progress.emit(target)
+            done += 1
 
     def enqueue(self, next):
         with self.lock:
