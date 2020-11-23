@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
+import os
+import shlex
+import subprocess
 import tempfile
 import threading
 import time
@@ -42,6 +45,7 @@ class RipperDialog(util.compile_ui("ripper.ui")):
         self.rip_thread = RipperThread(disc, config, workdir, self)
         self.rip_thread.progress.connect(self._rip_progress)
         self.rip_thread.finished.connect(self._child_done)
+        self.rip_thread.output.connect(lambda l: self._output(self.tbRipper, l))
 
         self.encoder_thread = EncodeThread(disc, config, workdir, self)
         self.encoder_thread.progress.connect(self._encode_progress)
@@ -94,14 +98,18 @@ class RipperDialog(util.compile_ui("ripper.ui")):
             self.accept()
             return
 
-        errs = ["Errors occurred during ripping / encoding:"] + self._errors
+        errs = ["Errors occurred during ripping / encoding:"] + self.errors
         msg = "\n".join(errs)
         QMessageBox.critical(self, "Error", msg)
         self.reject()
 
+    def _output(self, tbox, line):
+        tbox.appendPlainText(line)
 
-class RipperThread(QThread):
+
+class TaskThread(QThread):
     progress = pyqtSignal(str)
+    output = pyqtSignal(str)
 
     def __init__(self, disc, config, workdir, ripper):
         QThread.__init__(self)
@@ -109,24 +117,58 @@ class RipperThread(QThread):
         self.config = config
         self.workdir = workdir
         self.ripper = ripper
+        self.proc = None
 
+    def _exec(self, track, cmd, inf, outf):
+        if inf:
+            inf = os.path.join(self.workdir, inf)
+        if outf:
+            outf = os.path.join(self.workdir, outf)
+
+        variables = {
+            "artist": self.disc.artist,
+            "album": self.disc.album,
+            "discno": self.disc.discno,
+            "trackno": track.trackno,
+            "track": track.title,
+            "input": inf,
+            "output": outf,
+            "ext": EXT,
+        }
+        cmd = shlex.split(cmd)
+        for i in range(len(cmd)):
+            cmd[i] = cmd[i].format(**variables)
+        print(f"exec {cmd}")
+
+        try:
+            self.proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8"
+            )
+
+            for line in self.proc.stdout:
+                self.output.emit(line)
+
+            ec = self.proc.wait()
+            if ec != 0:
+                raise Exception(f"process {cmd[0]} exited with {ec}")
+
+            self.proc = None
+        except Exception as e:
+            self.ripper.error.emit(str(e))
+
+
+class RipperThread(TaskThread):
     def run(self):
         for t in self.disc.tracks:
             time.sleep(1)
             target = f"track{t.trackno}.wav"
+            self._exec(t, "echo {track}", None, target)
             self.progress.emit(target)
 
 
-class EncodeThread(QThread):
-    progress = pyqtSignal(str)
-
+class EncodeThread(TaskThread):
     def __init__(self, disc, config, workdir, ripper):
-        QThread.__init__(self)
-        self.disc = disc
-        self.config = config
-        self.workdir = workdir
-        self.ripper = ripper
-
+        super().__init__(disc, config, workdir, ripper)
         self.queue = []
         self.lock = threading.Lock()
         self.event = threading.Event()
