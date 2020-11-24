@@ -5,6 +5,7 @@ from PyQt5 import uic
 from PyQt5.QtCore import QSettings
 
 SETTINGS = QSettings("vanzin.org", "fripper")
+TEST_MODE = False
 
 
 def icon(name):

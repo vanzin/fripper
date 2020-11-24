@@ -14,6 +14,7 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QDialog
 from PyQt5.QtWidgets import QMessageBox
 
+CDPARANOIA_CMD = "cdparanoia --abort-on-skip --never-skip=10 {trackno} {output}"
 EXT = "mp3"
 
 
@@ -50,6 +51,7 @@ class RipperDialog(util.compile_ui("ripper.ui")):
         self.encoder_thread = EncodeThread(disc, config, workdir, self)
         self.encoder_thread.progress.connect(self._encode_progress)
         self.encoder_thread.finished.connect(self._child_done)
+        self.encoder_thread.output.connect(lambda l: self._output(self.tbEncoder, l))
         self.rip_thread.progress.connect(self.encoder_thread.enqueue)
 
         self._done = 0
@@ -88,6 +90,8 @@ class RipperDialog(util.compile_ui("ripper.ui")):
 
     def _error(self, msg):
         self.errors.append(msg)
+        self.rip_thread.stop()
+        self.encoder_thread.stop()
 
     def _child_done(self):
         self._done += 1
@@ -118,6 +122,7 @@ class TaskThread(QThread):
         self.workdir = workdir
         self.ripper = ripper
         self.proc = None
+        self.active = True
 
     def _exec(self, track, cmd, inf, outf):
         if inf:
@@ -138,7 +143,10 @@ class TaskThread(QThread):
         cmd = shlex.split(cmd)
         for i in range(len(cmd)):
             cmd[i] = cmd[i].format(**variables)
-        print(f"exec {cmd}")
+
+        if util.TEST_MODE:
+            time.sleep(1)
+            cmd = ["echo"] + cmd
 
         try:
             self.proc = subprocess.Popen(
@@ -153,16 +161,26 @@ class TaskThread(QThread):
                 raise Exception(f"process {cmd[0]} exited with {ec}")
 
             self.proc = None
+            return True
         except Exception as e:
-            self.ripper.error.emit(str(e))
+            if self.active:
+                self.ripper.error.emit(str(e))
+            return False
+
+    def stop(self):
+        self.active = False
+        if self.proc:
+            self.proc.terminate()
 
 
 class RipperThread(TaskThread):
     def run(self):
         for t in self.disc.tracks:
-            time.sleep(1)
+            if not self.active:
+                break
             target = f"track{t.trackno}.wav"
-            self._exec(t, "echo {track}", None, target)
+            if not self._exec(t, CDPARANOIA_CMD, None, target):
+                break
             self.progress.emit(target)
 
 
@@ -177,21 +195,42 @@ class EncodeThread(TaskThread):
         done = 0
         while done < len(self.disc.tracks):
             self.event.wait()
-            with self.lock:
+
+            next = self.dequeue()
+            while next:
+                if not self.encode(next, self.disc.tracks[done]):
+                    return
+                done += 1
+                next = self.dequeue()
+
+    def encode(self, source, track):
+        target = f"{source}.{EXT}"
+        if not self._exec(track, self.config.encoder, source, target):
+            return False
+
+        # TODO: tag
+
+        self.progress.emit(target)
+        return True
+
+    def dequeue(self):
+        next = None
+        with self.lock:
+            if self.queue:
                 next = self.queue[0]
                 del self.queue[0]
-                self.event.clear()
-
-            time.sleep(1)
-            target = f"{next}.{EXT}"
-            # TODO: encode / tag next
-            self.progress.emit(target)
-            done += 1
+            self.event.clear()
+        return next
 
     def enqueue(self, next):
         with self.lock:
             self.queue.append(next)
             self.event.set()
+
+    def stop(self):
+        with self.lock:
+            self.event.set()
+        super().stop()
 
 
 def rip(app, disc):

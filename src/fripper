@@ -34,9 +34,12 @@ def main(argv):
         import debug
 
         disc = debug.DISC
+        util.TEST_MODE = True
     else:
         discid = args.discid
-        if not discid:
+        if discid:
+            util.TEST_MODE = True
+        else:
             discid = detect.get_disc_id()
 
         disc = detect.get_cd_info(discid)
