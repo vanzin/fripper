@@ -27,6 +27,7 @@ class CDInfo:
     discno: int
     discs: int
     year: int
+    cover_art = None
 
 
 def get_disc_id():

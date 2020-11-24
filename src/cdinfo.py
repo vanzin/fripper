@@ -1,10 +1,56 @@
 # SPDX-License-Identifier: BSD-2-Clause
+import requests
 import util
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtWidgets import QLineEdit
 from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QVBoxLayout
+
+
+class CoverLabel(QLabel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.setText("Drop a cover...")
+        self.setAcceptDrops(True)
+        self.cover_data = None
+        self.cover = None
+        self._set_cover()
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        url = event.mimeData().urls()[0].toString()
+        try:
+            res = requests.get(url)
+            res.raise_for_status()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error downloading {url}: {e}.")
+            return
+
+        self.cover_data = res.content
+        self.cover = QPixmap()
+        self.cover.loadFromData(self.cover_data)
+        self._set_cover()
+
+    def _set_cover(self):
+        if not self.cover:
+            return
+
+        self.setText("")
+        h = self.height()
+        w = self.width()
+        scaled = self.cover.scaled(w, h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.setPixmap(scaled)
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self._set_cover()
 
 
 class InfoDialog(util.compile_ui("cdinfo.ui")):
@@ -14,6 +60,13 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
 
         self.disc = disc
         self.config = config
+
+        vbox = QVBoxLayout()
+        self.fCover.setLayout(vbox)
+
+        self.lblCover = CoverLabel(self)
+        vbox.addWidget(self.lblCover)
+        vbox.setStretch(0, 1)
 
         self.btnGo.clicked.connect(self._go)
         self.btnCancel.clicked.connect(self.reject)
@@ -66,6 +119,7 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
         d.artist = self.leArtist.text()
         d.album = self.leAlbum.text()
         d.year = int(self.leYear.text())
+        d.cover_art = self.lblCover.cover_data
 
         for i in range(len(d.tracks)):
             d.tracks[i].title = self.trackNames[i].text()
