@@ -9,15 +9,13 @@ import util
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtWidgets import QMessageBox
 
 
 def rip(app, disc):
     try:
         ripper.rip(app, disc)
     except Exception as e:
-        util.print_error()
-        QMessageBox.critical(None, "Error", f"Error during rip process: {e}")
+        util.show_error()
 
 
 def main(argv):

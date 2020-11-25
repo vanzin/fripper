@@ -41,6 +41,11 @@ def save_ui(widget, name):
         SETTINGS.setValue(f"{name}/windowState", widget.saveState())
 
 
+def show_error(e):
+    print_error()
+    QMessageBox.critical(None, "Error", str(e))
+
+
 def print_error():
     import traceback
 

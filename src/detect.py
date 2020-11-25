@@ -2,11 +2,11 @@
 import base64
 import datetime
 import hashlib
-import re
-import subprocess
 from dataclasses import dataclass
 
+import cdio
 import musicbrainzngs as mb
+import pycdio
 
 mb.set_useragent("fripper", "1.0")
 
@@ -32,52 +32,36 @@ class CDInfo:
 
 def get_disc_id():
     # See: https://musicbrainz.org/doc/Disc_ID_Calculation for algorithm
-    # Uses cd-info instead of cd-record; track info looks like:
-    #   1: 00:02:00  000000 audio  false  no    2        no
-    tre = re.compile(r"\s*([0-9]+):\s[0-9]+:[0-9]+:[0-9]+\s+([0-9]+)\s+(.*?)\s+.*")
+    # Some of the stuff described in that doc is already handled by the cdio library. Only
+    # the leadout adjustment based on the LBA address of data tracks is missing.
+    d = cdio.Device(driver_id=pycdio.DRIVER_UNKNOWN)
+    drive_name = d.get_device()
+
+    if d.get_disc_mode() != "CD-DA":
+        raise Exception("Not an audio disc.")
+
+    first = pycdio.get_first_track_num(d.cd)
+    count = d.get_num_tracks()
+    last = first
 
     tracks = {}
     leadout = None
-    has_data = False
-    first = -1
-    last = -1
+    for i in range(first, first + count):
+        t = d.get_track(i)
+        if t.get_format() == "audio":
+            tracks[i] = t.get_lba()
+            last = i
+        elif leadout is None:
+            leadout = t.get_lba() - 11400
 
-    toc = subprocess.check_output(
-        [
-            "cd-info",
-            "--no-device-info",
-            "--no-analyze",
-            "--no-disc-mode",
-            "--no-xa",
-            "--no-header",
-        ]
-    )
-    for line in toc.decode("utf-8").split("\n"):
-        m = tre.match(line)
-        if not m:
-            continue
-
-        trackno = int(m.group(1))
-        offset = int(m.group(2)) + 150
-        ttype = m.group(3)
-
-        if ttype == "leadout":
-            if leadout is None:
-                leadout = offset
-        elif ttype == "audio":
-            if first == -1:
-                first = trackno
-            last = trackno
-            tracks[trackno] = offset
-        else:
-            leadout = offset - 11400
+    if leadout is None:
+        leadout = d.get_track(pycdio.CDROM_LEADOUT_TRACK).get_lba()
+    tracks[0] = leadout
 
     data = [
         f"{first:02X}",
         f"{last:02X}",
     ]
-
-    tracks[0] = leadout
 
     for i in range(100):
         offset = tracks.get(i, 0)
