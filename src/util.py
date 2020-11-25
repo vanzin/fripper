@@ -39,3 +39,9 @@ def save_ui(widget, name):
     SETTINGS.setValue(f"{name}/geometry", widget.saveGeometry())
     if hasattr(widget, "saveState"):
         SETTINGS.setValue(f"{name}/windowState", widget.saveState())
+
+
+def print_error():
+    import traceback
+
+    traceback.print_exc()

@@ -16,9 +16,7 @@ def rip(app, disc):
     try:
         ripper.rip(app, disc)
     except Exception as e:
-        import traceback
-
-        traceback.print_exc()
+        util.print_error()
         QMessageBox.critical(None, "Error", f"Error during rip process: {e}")
 
 

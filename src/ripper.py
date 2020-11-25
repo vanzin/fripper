@@ -151,6 +151,7 @@ class TaskThread(QThread):
             self.proc = None
             return True
         except Exception as e:
+            util.print_error()
             if self.active:
                 self.ripper.error.emit(str(e))
             return False
@@ -204,9 +205,8 @@ class EncodeThread(TaskThread):
         try:
             self.tag(target, track)
         except Exception as e:
+            util.print_error()
             self.ripper.error.emit(f"error tagging {target}: {e}")
-            if util.TEST_MODE:
-                print(e)
             return False
 
         self.progress.emit(target)
@@ -230,9 +230,6 @@ class EncodeThread(TaskThread):
 
         mp3.save()
 
-        if util.TEST_MODE:
-            print(f"tagged: {tags.keys()}")
-
     def dequeue(self):
         next = None
         with self.lock:
@@ -253,13 +250,25 @@ class EncodeThread(TaskThread):
         super().stop()
 
 
-def commit_files(root, target):
+def commit_files(staging, target):
     if util.TEST_MODE:
-        print(f"committing {root} to {target}")
-        return
+        print(f"committing {staging} to {target}")
 
-    # TODO
-    pass
+    for name in os.listdir(staging):
+        src = os.path.join(staging, name)
+        dst = os.path.join(target, name)
+
+        if os.path.isdir(src):
+            if not util.TEST_MODE and not os.path.isdir(dst):
+                os.mkdir(dst)
+            commit_files(src, dst)
+        else:
+            if os.path.exists(dst):
+                raise Exception(f"cannot write target {dst}: already exists")
+            if util.TEST_MODE:
+                print(f"  {src} -> {dst}")
+            else:
+                shutil.move(src, dst)
 
 
 def rename_files(disc, ripped, target, template):
@@ -271,8 +280,6 @@ def rename_files(disc, ripped, target, template):
 
     def fs_safe(s):
         return s.translate(tbl)
-
-    root = None
 
     for i in range(len(ripped)):
         t = disc.tracks[i]
@@ -288,17 +295,13 @@ def rename_files(disc, ripped, target, template):
         )
 
         expanded = template.format(**variables)
-        print(f"{src} -> {expanded}")
+        if util.TEST_MODE:
+            print(f"{src} -> {expanded}")
         dest = os.path.join(target, expanded)
 
         if i == 0:
             os.makedirs(os.path.dirname(dest))
         shutil.move(src, dest)
-
-        if not root:
-            root = os.path.join(target, expanded.split("/")[0])
-
-    return root
 
 
 def rip(app, disc):
@@ -325,7 +328,8 @@ def rip(app, disc):
             disc.album = f"{disc.album} (Disc {disc.discno})"
 
         encoded = [os.path.join(workdir, x) for x in ripper.encoded]
-        root = rename_files(disc, encoded, workdir, config.template)
-        commit_files(root, config.target)
+        staging = tempfile.mkdtemp(dir=workdir)
+        rename_files(disc, encoded, staging, config.template)
+        commit_files(staging, config.target)
 
     app.quit()

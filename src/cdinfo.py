@@ -70,9 +70,14 @@ class CoverLabel(QLabel):
             event.acceptProposedAction()
 
     def dropEvent(self, event):
-        url = event.mimeData().urls()[0].toString()
+        url = event.mimeData().urls()[0]
+
+        if url.scheme() == "file":
+            self.from_file(url.path())
+            return
+
         try:
-            res = requests.get(url)
+            res = requests.get(url.toString())
             res.raise_for_status()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error downloading {url}: {e}.")
