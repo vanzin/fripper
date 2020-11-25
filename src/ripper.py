@@ -13,6 +13,8 @@ from PyQt5.QtCore import QThread
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QDialog
 from PyQt5.QtWidgets import QMessageBox
+from mutagen import id3
+from mutagen.mp3 import MP3
 
 CDPARANOIA_CMD = "cdparanoia --abort-on-skip --never-skip=10 {trackno} {output}"
 EXT = "mp3"
@@ -146,7 +148,6 @@ class TaskThread(QThread):
 
         if util.TEST_MODE:
             time.sleep(1)
-            cmd = ["echo"] + cmd
 
         try:
             self.proc = subprocess.Popen(
@@ -179,7 +180,12 @@ class RipperThread(TaskThread):
             if not self.active:
                 break
             target = f"track{t.trackno}.wav"
-            if not self._exec(t, CDPARANOIA_CMD, None, target):
+
+            cmd = CDPARANOIA_CMD
+            if util.TEST_MODE:
+                cmd = "touch {output}"
+
+            if not self._exec(t, cmd, None, target):
                 break
             self.progress.emit(target)
 
@@ -208,10 +214,37 @@ class EncodeThread(TaskThread):
         if not self._exec(track, self.config.encoder, source, target):
             return False
 
-        # TODO: tag
+        try:
+            self.tag(target, track)
+        except Exception as e:
+            self.ripper.error.emit(f"error tagging {target}: {e}")
+            if util.TEST_MODE:
+                print(e)
+            return False
 
         self.progress.emit(target)
         return True
+
+    def tag(self, target, track):
+        mp3 = MP3(os.path.join(self.workdir, target))
+
+        if not mp3.tags:
+            mp3.add_tags()
+
+        tags = mp3.tags
+        tags.add(id3.TALB(encoding=id3.Encoding.UTF8, text=self.disc.album))
+        tags.add(id3.TPE1(encoding=id3.Encoding.UTF8, text=self.disc.artist))
+        tags.add(id3.TIT2(encoding=id3.Encoding.UTF8, text=track.title))
+        tags.add(id3.TRCK(encoding=id3.Encoding.UTF8, text=str(track.trackno)))
+        tags.add(id3.TDRC(encoding=id3.Encoding.UTF8, text=str(self.disc.year)))
+        tags.add(id3.TPOS(encoding=id3.Encoding.UTF8, text=str(self.disc.discno)))
+        if self.disc.cover_art:
+            tags.add(id3.APIC(encoding=id3.Encoding.UTF8, data=self.disc.cover_art))
+
+        mp3.save()
+
+        if util.TEST_MODE:
+            print(f"tagged: {tags.keys()}")
 
     def dequeue(self):
         next = None
