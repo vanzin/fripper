@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtWidgets import QLineEdit
 from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtWidgets import QVBoxLayout
 
 
@@ -52,6 +53,12 @@ class CoverLabel(QLabel):
         super().resizeEvent(e)
         self._set_cover()
 
+    def from_file(self, path):
+        self.cover_data = open(path, "rb").read()
+        self.cover = QPixmap()
+        self.cover.load(path)
+        self._set_cover()
+
 
 class InfoDialog(util.compile_ui("cdinfo.ui")):
     def __init__(self, disc, config):
@@ -67,6 +74,11 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
         self.lblCover = CoverLabel(self)
         vbox.addWidget(self.lblCover)
         vbox.setStretch(0, 1)
+
+        btnCover = QPushButton(self)
+        btnCover.setText("Open...")
+        vbox.addWidget(btnCover)
+        btnCover.clicked.connect(self._open_cover)
 
         self.btnGo.clicked.connect(self._go)
         self.btnCancel.clicked.connect(self.reject)
@@ -133,3 +145,8 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
         path = QFileDialog.getExistingDirectory(self)
         if path:
             self.leTarget.setText(path)
+
+    def _open_cover(self):
+        path, _ = QFileDialog.getOpenFileName(self)
+        if path:
+            self.lblCover.from_file(path)
