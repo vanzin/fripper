@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
+import os
+
 import requests
 import util
 from PyQt5.QtCore import Qt
@@ -9,6 +11,48 @@ from PyQt5.QtWidgets import QLineEdit
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtWidgets import QVBoxLayout
+
+
+def cmd_fmt_variables(
+    workdir,
+    inf,
+    outf,
+    ext,
+):
+    """
+    Returns a map with variables for substitution in command templates.
+    """
+    if inf:
+        inf = os.path.join(workdir, inf)
+    if outf:
+        outf = os.path.join(workdir, outf)
+
+    return {
+        "input": inf,
+        "output": outf,
+        "ext": ext,
+    }
+
+
+def dest_fmt_variables(
+    artist,
+    album,
+    discno,
+    trackno,
+    track,
+    ext,
+):
+    """
+    Returns a map with variables for substitution in destination path templates.
+    """
+    return {
+        "artist": artist,
+        "album": album,
+        "discno": discno,
+        "trackno": trackno,
+        "track": track,
+        "ext": ext,
+    }
 
 
 class CoverLabel(QLabel):
@@ -126,6 +170,20 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
             if not v.text():
                 QMessageBox.critical(self, "Error", f"{k} is required.")
                 return
+
+        cmd_vars = cmd_fmt_variables("workdir", "input", "output", "ext")
+        try:
+            self.leEncoder.text().format(**cmd_vars)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Invalid encoder command: {e}")
+            return
+
+        dest_vars = dest_fmt_variables("artist", "album", 1, 1, "track", "ext")
+        try:
+            self.leTemplate.text().format(**dest_vars)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Invalid file name template: {e}")
+            return
 
         d = self.disc
         d.artist = self.leArtist.text()

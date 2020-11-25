@@ -9,6 +9,17 @@ import util
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QMessageBox
+
+
+def rip(app, disc):
+    try:
+        ripper.rip(app, disc)
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        QMessageBox.critical(None, "Error", f"Error during rip process: {e}")
 
 
 def main(argv):
@@ -46,7 +57,7 @@ def main(argv):
 
     app = QApplication(argv)
     app.setWindowIcon(QIcon(util.icon("fripper.png")))
-    QTimer.singleShot(0, lambda: ripper.rip(app, disc))
+    QTimer.singleShot(0, lambda: rip(app, disc))
 
     ec = app.exec_()
     util.SETTINGS.sync()

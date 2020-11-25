@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import os
 import shlex
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -127,21 +128,7 @@ class TaskThread(QThread):
         self.active = True
 
     def _exec(self, track, cmd, inf, outf):
-        if inf:
-            inf = os.path.join(self.workdir, inf)
-        if outf:
-            outf = os.path.join(self.workdir, outf)
-
-        variables = {
-            "artist": self.disc.artist,
-            "album": self.disc.album,
-            "discno": self.disc.discno,
-            "trackno": track.trackno,
-            "track": track.title,
-            "input": inf,
-            "output": outf,
-            "ext": EXT,
-        }
+        variables = cdinfo.cmd_fmt_variables(self.workdir, inf, outf, EXT)
         cmd = shlex.split(cmd)
         for i in range(len(cmd)):
             cmd[i] = cmd[i].format(**variables)
@@ -266,6 +253,54 @@ class EncodeThread(TaskThread):
         super().stop()
 
 
+def commit_files(root, target):
+    if util.TEST_MODE:
+        print(f"committing {root} to {target}")
+        return
+
+    # TODO
+    pass
+
+
+def rename_files(disc, ripped, target, template):
+    if len(disc.tracks) != len(ripped):
+        QMessageBox.critical(None, "Error", "Inconsistent state after ripping disc.")
+        return
+
+    tbl = str.maketrans("/*$^&%\n\t", "--____--")
+
+    def fs_safe(s):
+        return s.translate(tbl)
+
+    root = None
+
+    for i in range(len(ripped)):
+        t = disc.tracks[i]
+        src = ripped[i]
+
+        variables = cdinfo.dest_fmt_variables(
+            fs_safe(disc.artist),
+            fs_safe(disc.album),
+            disc.discno,
+            t.trackno,
+            fs_safe(t.title),
+            EXT,
+        )
+
+        expanded = template.format(**variables)
+        print(f"{src} -> {expanded}")
+        dest = os.path.join(target, expanded)
+
+        if i == 0:
+            os.makedirs(os.path.dirname(dest))
+        shutil.move(src, dest)
+
+        if not root:
+            root = os.path.join(target, expanded.split("/")[0])
+
+    return root
+
+
 def rip(app, disc):
     config = Config(
         target=util.SETTINGS.value("fripper/target"),
@@ -286,7 +321,11 @@ def rip(app, disc):
         ripper = RipperDialog(disc, config, workdir)
         ripper.exec_()
 
-        # TODO: move encoded files to destination
-        print("TODO: commit output")
+        if info.rip_as_multi_disc:
+            disc.album = f"{disc.album} (Disc {disc.discno})"
+
+        encoded = [os.path.join(workdir, x) for x in ripper.encoded]
+        root = rename_files(disc, encoded, workdir, config.template)
+        commit_files(root, config.target)
 
     app.quit()
