@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import cdinfo
 import util
 from PyQt5.QtCore import QThread
+from PyQt5.QtCore import Qt
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QDialog
 from PyQt5.QtWidgets import QMessageBox
@@ -33,6 +34,7 @@ class RipperDialog(util.compile_ui("ripper.ui")):
 
     def __init__(self, disc, config, workdir):
         super().__init__()
+        self.setWindowModality(Qt.ApplicationModal)
         self.disc = disc
 
         count = len(disc.tracks)
@@ -68,6 +70,7 @@ class RipperDialog(util.compile_ui("ripper.ui")):
         self.encoder_thread.start()
 
         self.encoded = []
+        util.restore_ui(self, "ripper")
 
     def _completed(self, done, target):
         return f"{done}/{target}"
@@ -100,6 +103,8 @@ class RipperDialog(util.compile_ui("ripper.ui")):
         self._done += 1
         if self._done != 2:
             return
+
+        util.save_ui(self, "ripper")
 
         if not self.errors:
             self.accept()
