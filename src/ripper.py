@@ -178,8 +178,10 @@ class RipperThread(TaskThread):
             if util.TEST_MODE:
                 cmd = "touch {output}"
 
+            self.output.emit(f"==== Ripping track {t.trackno} - {t.title}")
             if not self._exec(t, cmd, None, target):
                 break
+            self.output.emit(f"--- Done.")
             self.progress.emit(target)
 
 
@@ -203,10 +205,13 @@ class EncodeThread(TaskThread):
                 next = self.dequeue()
 
     def encode(self, source, track):
+        self.output.emit(f"==== Encoding track {track.trackno} - {track.title}")
+
         target = f"{source}.{EXT}"
         if not self._exec(track, self.config.encoder, source, target):
             return False
 
+        self.output.emit(f"--- Tagging...")
         try:
             self.tag(target, track)
         except Exception as e:
@@ -214,6 +219,7 @@ class EncodeThread(TaskThread):
             self.ripper.error.emit(f"error tagging {target}: {e}")
             return False
 
+        self.output.emit(f"--- Done.")
         self.progress.emit(target)
         return True
 
