@@ -1,4 +1,6 @@
 fripper - a CD ripper
 =====================
 
-
+A bare bones CD ripper that is basically a simple UI on top of musicbrainz and cdparanoia.
+Even though it allows you to define the encoding command, internally it's hardcoded to mp3,
+so kinda depends on lame right now.
