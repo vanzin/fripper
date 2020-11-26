@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import os
 
+import requests
 from PyQt5 import uic
 from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QMessageBox
@@ -54,3 +55,9 @@ def print_error():
     import traceback
 
     traceback.print_exc()
+
+
+def http_get(url):
+    res = requests.get(url)
+    res.raise_for_status()
+    return res.content

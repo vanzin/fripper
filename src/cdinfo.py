@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import os
 
-import requests
 import util
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
@@ -56,12 +55,12 @@ def dest_fmt_variables(
 
 
 class CoverLabel(QLabel):
-    def __init__(self, parent):
+    def __init__(self, parent, cover):
         super().__init__(parent)
         self.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         self.setText("Drop a cover...")
         self.setAcceptDrops(True)
-        self.cover_data = None
+        self.cover_data = cover
         self.cover = None
         self._set_cover()
 
@@ -77,22 +76,26 @@ class CoverLabel(QLabel):
             return
 
         try:
-            res = requests.get(url.toString())
-            res.raise_for_status()
+            self.cover_data = util.http_get(url.toString())
+            self._set_cover()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error downloading {url}: {e}.")
-            return
-
-        self.cover_data = res.content
-        self.cover = QPixmap()
-        self.cover.loadFromData(self.cover_data)
-        self._set_cover()
 
     def _set_cover(self):
+        if not self.cover_data:
+            return
+
+        self.cover = QPixmap()
+        self.cover.loadFromData(self.cover_data)
+
+        size = self.cover.size()
+        self.setToolTip(f"{size.width()}px x {size.height()}px")
+        self._scale_cover()
+
+    def _scale_cover(self):
         if not self.cover:
             return
 
-        self.setText("")
         h = self.height()
         w = self.width()
         scaled = self.cover.scaled(w, h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -100,12 +103,10 @@ class CoverLabel(QLabel):
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
-        self._set_cover()
+        self._scale_cover()
 
     def from_file(self, path):
         self.cover_data = open(path, "rb").read()
-        self.cover = QPixmap()
-        self.cover.load(path)
         self._set_cover()
 
 
@@ -120,7 +121,7 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
         vbox = QVBoxLayout()
         self.fCover.setLayout(vbox)
 
-        self.lblCover = CoverLabel(self)
+        self.lblCover = CoverLabel(self, disc.cover_art)
         vbox.addWidget(self.lblCover)
         vbox.setStretch(0, 1)
 

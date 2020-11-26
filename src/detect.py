@@ -40,7 +40,7 @@ class CDInfo:
     discs: int
     year: int
     multi_artist: bool
-    cover_art = None
+    cover_art: list
 
 
 class DetectorTask(QThread):
@@ -185,8 +185,9 @@ def get_cd_info(discid):
         print("cannot find disc no")
         return None
 
+    relid = rel["id"]
     ret = mb.get_release_by_id(
-        rel["id"], includes=["artists", "recordings", "media", "artist-credits"]
+        relid, includes=["artists", "recordings", "media", "artist-credits"]
     )
     rel = ret.get("release")
 
@@ -228,6 +229,19 @@ def get_cd_info(discid):
 
     atracks = sorted(atracks, key=lambda t: t.trackno)
 
+    cover_art = None
+    try:
+        art = mb.get_image_list(relid)
+        for img in art["images"]:
+            if img["back"]:
+                continue
+
+            cover_art = util.http_get(img["image"])
+            break
+    except Exception as e:
+        util.print_error(e)
+        pass
+
     return CDInfo(
         artist=album_artist,
         album=album,
@@ -236,6 +250,7 @@ def get_cd_info(discid):
         discs=disc_count,
         year=year,
         multi_artist=len(found_artists) > 1,
+        cover_art=cover_art,
     )
 
 
