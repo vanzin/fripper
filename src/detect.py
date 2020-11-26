@@ -7,8 +7,20 @@ from dataclasses import dataclass
 import cdio
 import musicbrainzngs as mb
 import pycdio
+import util
+from PyQt5.QtCore import QThread
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QDialog
+from PyQt5.QtWidgets import QHBoxLayout
+from PyQt5.QtWidgets import QLabel
 
 mb.set_useragent("fripper", "1.0")
+
+
+@dataclass
+class DiscInfo:
+    discid: str
+    track_count: int
 
 
 @dataclass
@@ -31,7 +43,82 @@ class CDInfo:
     cover_art = None
 
 
-def get_disc_id():
+class DetectorTask(QThread):
+    def __init__(self, dlg, discid):
+        QThread.__init__(self)
+        self.dlg = dlg
+        self.discid = discid
+        self.disc = None
+
+    def run(self):
+        tracks = None
+        if not self.discid:
+            try:
+                info = get_disc_info()
+                self.discid = info.discid
+                tracks = info.track_count
+            except Exception as e:
+                util.show_error(e, message="Error reading disc information")
+                return
+
+        self.dlg.message.emit("Getting data from musicbrainz...")
+
+        try:
+            self.disc = get_cd_info(self.discid)
+        except Exception as e:
+            util.show_error(e, message="Could not find CD info in musicbrainz")
+            if not tracks:
+                # Happens during testing only. Just set a bogus number
+                tracks = 5
+
+            # This isn't very good, especially if the not found disc has multiple
+            # artists. UI needs to handle this case properly.
+            self.disc = CDInfo(
+                artist="Unknown",
+                album="Unknown",
+                discno=1,
+                discs=1,
+                year=1980,
+                multi_artist=False,
+                tracks=[
+                    TrackInfo(
+                        artist="Unknown", album="Unknown", title="Unknown", trackno=i
+                    )
+                    for i in range(1, tracks + 1)
+                ],
+            )
+
+
+class DetectionDialog(QDialog):
+    message = pyqtSignal(str)
+
+    def __init__(self, discid=None):
+        QDialog.__init__(self)
+
+        hbox = QHBoxLayout()
+        self.msg = QLabel()
+        hbox.addWidget(self.msg)
+        hbox.setStretch(0, 1)
+        self.setLayout(hbox)
+
+        self._set_message("Detecting the disc...")
+        self.task = DetectorTask(self, discid)
+
+        self.task.finished.connect(self._done)
+        self.message.connect(self._set_message)
+
+        self.task.start()
+
+    def _set_message(self, msg):
+        self.msg.setText(msg)
+        self.resize(self.sizeHint())
+
+    def _done(self):
+        self.disc = self.task.disc
+        self.accept()
+
+
+def get_disc_info():
     # See: https://musicbrainz.org/doc/Disc_ID_Calculation for algorithm
     # Some of the stuff described in that doc is already handled by the cdio library. Only
     # the leadout adjustment based on the LBA address of data tracks is missing.
@@ -165,7 +252,7 @@ if __name__ == "__main__":
     discid = "dCZWjhrnNC_JSgv9lqSZQ_SPc3c-"
 
     if sys.argv[-1] == "-d":
-        discid = get_disc_id()
+        discid = get_disc_info().discid
         print(f"discid: {discid}")
     elif len(sys.argv) == 2:
         discid = sys.argv[1]

@@ -3,6 +3,7 @@ import os
 
 from PyQt5 import uic
 from PyQt5.QtCore import QSettings
+from PyQt5.QtWidgets import QMessageBox
 
 SETTINGS = QSettings("vanzin.org", "fripper")
 TEST_MODE = False
@@ -41,9 +42,12 @@ def save_ui(widget, name):
         SETTINGS.setValue(f"{name}/windowState", widget.saveState())
 
 
-def show_error(e):
+def show_error(e, message=None):
     print_error()
-    QMessageBox.critical(None, "Error", str(e))
+    msg = str(e)
+    if message:
+        msg = f"{message}\n{e}"
+    QMessageBox.critical(None, "Error", msg)
 
 
 def print_error():

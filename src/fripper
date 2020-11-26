@@ -11,7 +11,15 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication
 
 
-def rip(app, disc):
+def rip(app, disc, discid):
+    if not disc:
+        detector = detect.DetectionDialog(discid=discid)
+        detector.exec_()
+        if not detector.disc:
+            app.quit()
+            return
+        disc = detector.disc
+
     try:
         ripper.rip(app, disc)
     except Exception as e:
@@ -37,6 +45,7 @@ def main(argv):
     )
     args = parser.parse_args(argv[1:])
 
+    disc = None
     if args.debug:
         import debug
 
@@ -46,14 +55,10 @@ def main(argv):
         discid = args.discid
         if discid:
             util.TEST_MODE = True
-        else:
-            discid = detect.get_disc_id()
-
-        disc = detect.get_cd_info(discid)
 
     app = QApplication(argv)
     app.setWindowIcon(QIcon(util.icon("fripper.png")))
-    QTimer.singleShot(0, lambda: rip(app, disc))
+    QTimer.singleShot(0, lambda: rip(app, disc, discid))
 
     ec = app.exec_()
     util.SETTINGS.sync()
