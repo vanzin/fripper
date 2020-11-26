@@ -104,7 +104,10 @@ def get_cd_info(discid):
     rel = ret.get("release")
 
     album = rel["title"]
-    year = datetime.datetime.strptime(rel["date"], "%Y-%m-%d").year
+    try:
+        year = datetime.datetime.strptime(rel["date"], "%Y-%m-%d").year
+    except:
+        year = int(rel["date"])
 
     for medium in rel["medium-list"]:
         if int(medium["position"]) == discno:
@@ -158,6 +161,7 @@ if __name__ == "__main__":
     # - x0uC3CqZCMC8_Qr2OsgL59MkmYE- : second disc of double album (Joe Satriani - Live in SF)
     # - kLu3X6F6GwZwCwvdhCVQs4R9iPc- : second disc with data track (The Ocean - Precambrian)
     # - SCP4nE6BDCTkQnHMzs6LiBuHCdg- : multiple artists (Merry Axemas)
+    # - VsCC5lu9uDTPZO5uUG6BiQ_OziI- : re-issued + bonus tracks (King Diamond - Abigail)
     discid = "dCZWjhrnNC_JSgv9lqSZQ_SPc3c-"
 
     if sys.argv[-1] == "-d":
