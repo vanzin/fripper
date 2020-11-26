@@ -145,16 +145,34 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
         self.leEncoder.setText(config.encoder)
         self.leTemplate.setText(config.template)
 
+        increment = 1
+        self.artists = None
+        if disc.multi_artist:
+            self.artists = []
+            increment = 2
+
         self.trackNames = []
         for t in disc.tracks:
+            idx = t.trackno * increment + 2
+            if disc.multi_artist:
+                lbl = QLabel(self)
+                lbl.setText(f"Artist {t.trackno}")
+                le = QLineEdit(self)
+                le.setText(t.artist)
+
+                self.infoPane.addWidget(lbl, idx, 0)
+                self.infoPane.addWidget(le, idx, 1, 1, 3)
+                self.artists.append(le)
+                idx += 1
+
             lbl = QLabel(self)
             lbl.setText(f"Track {t.trackno}")
 
             le = QLineEdit(self)
             le.setText(t.title)
 
-            self.infoPane.addWidget(lbl, t.trackno + 2, 0)
-            self.infoPane.addWidget(le, t.trackno + 2, 1, 1, 3)
+            self.infoPane.addWidget(lbl, idx, 0)
+            self.infoPane.addWidget(le, idx, 1, 1, 3)
             self.trackNames.append(le)
 
         util.restore_ui(self, "cdinfo")
@@ -195,6 +213,10 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
         d.album = self.leAlbum.text()
         d.year = int(self.leYear.text())
         d.cover_art = self.lblCover.cover_data
+
+        if d.multi_artist:
+            for i in range(len(d.tracks)):
+                d.tracks[i].artist = self.artists[i].text()
 
         for i in range(len(d.tracks)):
             d.tracks[i].title = self.trackNames[i].text()

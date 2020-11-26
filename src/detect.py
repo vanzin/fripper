@@ -27,6 +27,7 @@ class CDInfo:
     discno: int
     discs: int
     year: int
+    multi_artist: bool
     cover_art = None
 
 
@@ -84,26 +85,26 @@ def get_cd_info(discid):
 
     rel = releases[0]
 
+    discno = None
     disc_count = len(rel["medium-list"])
-    for disc in rel["medium-list"]:
-        if disc["disc-list"][0]["id"] == discid:
-            discno = int(disc["position"])
+    for medium in rel["medium-list"]:
+        for disc in medium["disc-list"]:
+            if disc["id"] == discid:
+                discno = int(medium["position"])
+                break
+        if discno:
             break
     else:
         print("cannot find disc no")
         return None
 
-    ret = mb.get_release_by_id(rel["id"], includes=["artists", "recordings", "media"])
+    ret = mb.get_release_by_id(
+        rel["id"], includes=["artists", "recordings", "media", "artist-credits"]
+    )
     rel = ret.get("release")
 
     album = rel["title"]
     year = datetime.datetime.strptime(rel["date"], "%Y-%m-%d").year
-
-    artists = rel["artist-credit"]
-    if len(artists) > 1:
-        artist = "Various"
-    else:
-        artist = artists[0]["artist"]["name"]
 
     for medium in rel["medium-list"]:
         if int(medium["position"]) == discno:
@@ -114,24 +115,37 @@ def get_cd_info(discid):
         return None
 
     atracks = []
+    found_artists = set()
     for t in tracks:
+        artists = t["artist-credit"]
+        if len(artists) > 1:
+            artist = "Various"
+        else:
+            artist = artists[0]["artist"]["name"]
+            found_artists.add(artist)
+
         track = TrackInfo(
             artist=artist,
             album=album,
-            title=t["recording"]["title"],
+            title=t.get("title") or t["recording"]["title"],
             trackno=int(t["position"]),
         )
         atracks.append(track)
 
+    album_artist = "Various"
+    if len(found_artists) == 1:
+        album_artist = list(found_artists)[0]
+
     atracks = sorted(atracks, key=lambda t: t.trackno)
 
     return CDInfo(
-        artist=artist,
+        artist=album_artist,
         album=album,
         tracks=atracks,
         discno=discno,
         discs=disc_count,
         year=year,
+        multi_artist=len(found_artists) > 1,
     )
 
 
@@ -143,6 +157,7 @@ if __name__ == "__main__":
     # - dCZWjhrnNC_JSgv9lqSZQ_SPc3c- : normal album (Haken - Vector)
     # - x0uC3CqZCMC8_Qr2OsgL59MkmYE- : second disc of double album (Joe Satriani - Live in SF)
     # - kLu3X6F6GwZwCwvdhCVQs4R9iPc- : second disc with data track (The Ocean - Precambrian)
+    # - SCP4nE6BDCTkQnHMzs6LiBuHCdg- : multiple artists (Merry Axemas)
     discid = "dCZWjhrnNC_JSgv9lqSZQ_SPc3c-"
 
     if sys.argv[-1] == "-d":
