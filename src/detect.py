@@ -160,7 +160,10 @@ def get_disc_info():
 
     b64 = base64.b64encode(sha.digest()).decode("utf-8")
     tbl = str.maketrans("+/=", "._-")
-    return b64.translate(tbl)
+    return DiscInfo(
+        discid=b64.translate(tbl),
+        track_count=count,
+    )
 
 
 def get_cd_info(discid):

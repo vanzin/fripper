@@ -133,7 +133,7 @@ class TaskThread(QThread):
         self.active = True
 
     def _exec(self, track, cmd, inf, outf):
-        variables = cdinfo.cmd_fmt_variables(self.workdir, inf, outf, EXT)
+        variables = cdinfo.cmd_fmt_variables(track, self.workdir, inf, outf, EXT)
         cmd = shlex.split(cmd)
         for i in range(len(cmd)):
             cmd[i] = cmd[i].format(**variables)

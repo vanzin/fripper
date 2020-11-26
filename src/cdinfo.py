@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import QVBoxLayout
 
 
 def cmd_fmt_variables(
+    track,
     workdir,
     inf,
     outf,
@@ -27,6 +28,7 @@ def cmd_fmt_variables(
         outf = os.path.join(workdir, outf)
 
     return {
+        "trackno": track.trackno,
         "input": inf,
         "output": outf,
         "ext": ext,
@@ -195,7 +197,9 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
                 QMessageBox.critical(self, "Error", f"{k} is required.")
                 return
 
-        cmd_vars = cmd_fmt_variables("workdir", "input", "output", "ext")
+        cmd_vars = cmd_fmt_variables(
+            self.disc.tracks[0], "workdir", "input", "output", "ext"
+        )
         try:
             self.leEncoder.text().format(**cmd_vars)
         except Exception as e:
