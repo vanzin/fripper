@@ -39,6 +39,7 @@ class CDInfo:
     discno: int
     discs: int
     year: int
+    set_size: int
     multi_artist: bool
     cover_art: list
 
@@ -200,6 +201,7 @@ def get_cd_info(discid):
     except:
         year = int(rel["date"])
 
+    set_size = rel["medium-count"]
     for medium in rel["medium-list"]:
         if int(medium["position"]) == discno:
             tracks = medium["track-list"]
@@ -252,6 +254,7 @@ def get_cd_info(discid):
         discno=discno,
         discs=disc_count,
         year=year,
+        set_size=set_size,
         multi_artist=len(found_artists) > 1,
         cover_art=cover_art,
     )

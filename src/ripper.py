@@ -229,7 +229,12 @@ class EncodeThread(TaskThread):
         tags.add(id3.TIT2(encoding=id3.Encoding.UTF8, text=track.title))
         tags.add(id3.TRCK(encoding=id3.Encoding.UTF8, text=str(track.trackno)))
         tags.add(id3.TDRC(encoding=id3.Encoding.UTF8, text=str(self.disc.year)))
-        tags.add(id3.TPOS(encoding=id3.Encoding.UTF8, text=str(self.disc.discno)))
+
+        tpos = str(self.disc.discno)
+        if self.disc.set_size > 1:
+            tpos = f"{self.disc.discno}/{self.disc.set_size}"
+        tags.add(id3.TPOS(encoding=id3.Encoding.UTF8, text=tpos))
+
         if self.disc.cover_art:
             tags.add(id3.APIC(encoding=id3.Encoding.UTF8, data=self.disc.cover_art))
 
