@@ -295,14 +295,7 @@ def rename_files(disc, ripped, target, template):
         t = disc.tracks[i]
         src = ripped[i]
 
-        variables = cdinfo.dest_fmt_variables(
-            fs_safe(disc.artist),
-            fs_safe(disc.album),
-            disc.discno,
-            t.trackno,
-            fs_safe(t.title),
-            EXT,
-        )
+        variables = cdinfo.dest_fmt_variables(disc, t, EXT)
 
         expanded = template.format(**variables)
         if util.TEST_MODE:

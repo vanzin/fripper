@@ -23,7 +23,7 @@ def rip(app, disc, discid):
     try:
         ripper.rip(app, disc)
     except Exception as e:
-        util.show_error()
+        util.show_error(e)
 
 
 def main(argv):

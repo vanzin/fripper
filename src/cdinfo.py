@@ -35,23 +35,20 @@ def cmd_fmt_variables(
     }
 
 
-def dest_fmt_variables(
-    artist,
-    album,
-    discno,
-    trackno,
-    track,
-    ext,
-):
+def dest_fmt_variables(disc, track, ext):
     """
     Returns a map with variables for substitution in destination path templates.
     """
+    trackno = track.trackno
+    if len(disc.tracks) >= 10:
+        trackno = f"{track.trackno:02}"
+
     return {
-        "artist": artist,
-        "album": album,
-        "discno": discno,
+        "artist": disc.artist,
+        "album": disc.album,
+        "discno": disc.discno,
         "trackno": trackno,
-        "track": track,
+        "track": track.title,
         "ext": ext,
     }
 
@@ -206,7 +203,7 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
             QMessageBox.critical(self, "Error", f"Invalid encoder command: {e}")
             return
 
-        dest_vars = dest_fmt_variables("artist", "album", 1, 1, "track", "ext")
+        dest_vars = dest_fmt_variables(self.disc, self.disc.tracks[0], "ext")
         try:
             self.leTemplate.text().format(**dest_vars)
         except Exception as e:
