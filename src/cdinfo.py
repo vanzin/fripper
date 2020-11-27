@@ -88,7 +88,7 @@ class CoverLabel(QLabel):
         self.cover.loadFromData(self.cover_data)
 
         size = self.cover.size()
-        self.setToolTip(f"{size.width()}px x {size.height()}px")
+        self.setToolTip(f"{size.width()} x {size.height()}")
         self._scale_cover()
 
     def _scale_cover(self):

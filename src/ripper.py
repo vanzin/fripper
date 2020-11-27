@@ -59,6 +59,7 @@ class RipperDialog(util.compile_ui("ripper.ui")):
         self.encoder_thread.output.connect(lambda l: self._output(self.tbEncoder, l))
         self.rip_thread.progress.connect(self.encoder_thread.enqueue)
 
+        self._cancelled = False
         self._done = 0
         self.errors = []
         self.error.connect(self._error)
@@ -76,8 +77,9 @@ class RipperDialog(util.compile_ui("ripper.ui")):
         return f"{done}/{target}"
 
     def _cancel(self):
-        # TODO
-        self.reject()
+        self.rip_thread.stop()
+        self.encoder_thread.stop()
+        self._cancelled = True
 
     def _set_progress(self, label, done):
         target = len(self.disc.tracks)
@@ -105,6 +107,10 @@ class RipperDialog(util.compile_ui("ripper.ui")):
             return
 
         util.save_ui(self, "ripper")
+
+        if self._cancelled:
+            self.reject()
+            return
 
         if not self.errors:
             self.accept()
@@ -292,7 +298,7 @@ def rename_files(disc, ripped, target, template):
         QMessageBox.critical(None, "Error", "Inconsistent state after ripping disc.")
         return
 
-    tbl = str.maketrans("/*$^&%\n\t", "--____--")
+    tbl = str.maketrans("/*$^&%|[{}]\n\t", "--____-(())--")
 
     def fs_safe(s):
         return s.translate(tbl)
@@ -341,4 +347,6 @@ def rip(app, disc):
         rename_files(disc, encoded, staging, config.template)
         commit_files(staging, config.target)
 
+    QMessageBox.information(None, "fripper", "Encoding done!")
+    util.eject()
     app.quit()

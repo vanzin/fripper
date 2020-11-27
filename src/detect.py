@@ -244,7 +244,7 @@ def get_cd_info(discid):
             cover_art = util.http_get(img["image"])
             break
     except Exception as e:
-        util.print_error(e)
+        util.print_error()
         pass
 
     return CDInfo(

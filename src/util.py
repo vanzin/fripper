@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import os
 
+import cdio
+import pycdio
 import requests
 from PyQt5 import uic
 from PyQt5.QtCore import QSettings
@@ -61,3 +63,11 @@ def http_get(url):
     res = requests.get(url)
     res.raise_for_status()
     return res.content
+
+
+def eject():
+    try:
+        d = cdio.Device(driver_id=pycdio.DRIVER_UNKNOWN)
+        d.eject_media()
+    except:
+        print_error()
