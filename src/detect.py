@@ -81,6 +81,8 @@ class DetectorTask(QThread):
                 discs=1,
                 year=1980,
                 multi_artist=False,
+                set_size=1,
+                cover_art=None,
                 tracks=[
                     TrackInfo(
                         artist="Unknown", album="Unknown", title="Unknown", trackno=i
