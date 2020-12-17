@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import detect
 
+DISCID = "kLu3X6F6GwZwCwvdhCVQs4R9iPc-"
+
 DISC = detect.CDInfo(
     artist="The Ocean",
     album="Precambrian",
-    discs=2,
     discno=2,
     year=2007,
+    multi_artist=False,
+    set_size=2,
+    cover_art=None,
     tracks=[
         detect.TrackInfo(
             artist="The Ocean", album="Precambrian", title="Siderian", trackno=1

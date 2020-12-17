@@ -50,6 +50,7 @@ def main(argv):
         import debug
 
         disc = debug.DISC
+        discid = debug.DISCID
         util.TEST_MODE = True
     else:
         discid = args.discid

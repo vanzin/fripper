@@ -37,7 +37,6 @@ class CDInfo:
     album: str
     tracks: list
     discno: int
-    discs: int
     year: int
     set_size: int
     multi_artist: bool
@@ -78,7 +77,6 @@ class DetectorTask(QThread):
                 artist="Unknown",
                 album="Unknown",
                 discno=1,
-                discs=1,
                 year=1980,
                 multi_artist=False,
                 set_size=1,
@@ -179,7 +177,6 @@ def get_cd_info(discid):
     rel = releases[0]
 
     discno = None
-    disc_count = len(rel["medium-list"])
     for medium in rel["medium-list"]:
         for disc in medium["disc-list"]:
             if disc["id"] == discid:
@@ -254,7 +251,6 @@ def get_cd_info(discid):
         album=album,
         tracks=atracks,
         discno=discno,
-        discs=disc_count,
         year=year,
         set_size=set_size,
         multi_artist=len(found_artists) > 1,

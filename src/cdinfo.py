@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import QLineEdit
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QWidget
 
 
 def cmd_fmt_variables(
@@ -138,8 +139,8 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
         self.leYear.setText(str(disc.year))
         self.leDisc.setText(str(disc.discno))
 
-        self.cbMultiDisc.setVisible(disc.discs > 1)
-        self.cbMultiDisc.setChecked(disc.discs > 1)
+        self.cbMultiDisc.setVisible(disc.set_size > 1)
+        self.cbMultiDisc.setChecked(disc.set_size > 1)
 
         self.leTarget.setText(config.target)
         self.leEncoder.setText(config.encoder)
@@ -152,6 +153,7 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
             increment = 2
 
         self.trackNames = []
+        prev = self.leDisc
         for t in disc.tracks:
             idx = t.trackno * increment + 2
             if disc.multi_artist:
@@ -163,6 +165,8 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
                 self.infoPane.addWidget(lbl, idx, 0)
                 self.infoPane.addWidget(le, idx, 1, 1, 3)
                 self.artists.append(le)
+                QWidget.setTabOrder(prev, le)
+                prev = le
                 idx += 1
 
             lbl = QLabel(self)
@@ -174,6 +178,8 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
             self.infoPane.addWidget(lbl, idx, 0)
             self.infoPane.addWidget(le, idx, 1, 1, 3)
             self.trackNames.append(le)
+            QWidget.setTabOrder(prev, le)
+            prev = le
 
         util.restore_ui(self, "cdinfo")
 
