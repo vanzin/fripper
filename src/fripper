@@ -3,12 +3,12 @@
 import argparse
 import sys
 
+import app
 import detect
 import ripper
 import util
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication
 
 
 def rip(app, disc, discid):
@@ -57,11 +57,11 @@ def main(argv):
         if discid:
             util.TEST_MODE = True
 
-    app = QApplication(argv)
-    app.setWindowIcon(QIcon(util.icon("fripper.png")))
-    QTimer.singleShot(0, lambda: rip(app, disc, discid))
+    _app = app.FRipper(argv)
+    _app.setWindowIcon(QIcon(util.icon("fripper.png")))
+    QTimer.singleShot(0, lambda: rip(_app, disc, discid))
 
-    ec = app.exec_()
+    ec = _app.exec_()
     util.SETTINGS.sync()
     sys.exit(ec)
 

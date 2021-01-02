@@ -6,7 +6,7 @@ import pycdio
 import requests
 from PyQt5 import uic
 from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QApplication
 
 SETTINGS = QSettings("vanzin.org", "fripper")
 TEST_MODE = False
@@ -46,11 +46,7 @@ def save_ui(widget, name):
 
 
 def show_error(e, message=None):
-    print_error()
-    msg = str(e)
-    if message:
-        msg = f"{message}\n{e}"
-    QMessageBox.critical(None, "Error", msg)
+    QApplication.instance().show_error(message)
 
 
 def print_error():

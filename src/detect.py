@@ -65,8 +65,8 @@ class DetectorTask(QThread):
 
         try:
             self.disc = get_cd_info(self.discid)
-        except Exception as e:
-            util.show_error(e, message="Could not find CD info in musicbrainz")
+        except Exception:
+            util.show_error("Could not find CD info in musicbrainz")
             if not tracks:
                 # Happens during testing only. Just set a bogus number
                 tracks = 5
