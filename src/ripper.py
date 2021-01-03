@@ -298,11 +298,6 @@ def rename_files(disc, ripped, target, template):
         QMessageBox.critical(None, "Error", "Inconsistent state after ripping disc.")
         return
 
-    tbl = str.maketrans("/*$^&%|[{}]\n\t", "--____-(())--")
-
-    def fs_safe(s):
-        return s.translate(tbl)
-
     for i in range(len(ripped)):
         t = disc.tracks[i]
         src = ripped[i]

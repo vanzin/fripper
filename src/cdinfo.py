@@ -44,12 +44,17 @@ def dest_fmt_variables(disc, track, ext):
     if len(disc.tracks) >= 10:
         trackno = f"{track.trackno:02}"
 
+    tbl = str.maketrans("/*$^&%|[{}]\n\t", "--____-(())--")
+
+    def fs_safe(s):
+        return s.translate(tbl)
+
     return {
-        "artist": disc.artist,
-        "album": disc.album,
+        "artist": fs_safe(disc.artist),
+        "album": fs_safe(disc.album),
         "discno": disc.discno,
         "trackno": trackno,
-        "track": track.title,
+        "track": fs_safe(track.title),
         "ext": ext,
     }
 
