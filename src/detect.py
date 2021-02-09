@@ -195,10 +195,22 @@ def get_cd_info(discid):
     rel = ret.get("release")
 
     album = rel["title"]
-    try:
-        year = datetime.datetime.strptime(rel["date"], "%Y-%m-%d").year
-    except:
-        year = int(rel["date"])
+
+    date = rel["date"]
+    fmts = [
+        "%Y-%m-%d",
+        "%Y-%m",
+        "%Y",
+    ]
+    for fmt in fmts:
+        try:
+            year = datetime.datetime.strptime(date, fmt).year
+            break
+        except:
+            pass
+    else:
+        print(f"Can't figure out album year: {date}")
+        year = 1900
 
     set_size = rel["medium-count"]
     for medium in rel["medium-list"]:
