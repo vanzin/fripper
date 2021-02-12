@@ -41,6 +41,7 @@ class CDInfo:
     set_size: int
     multi_artist: bool
     cover_art: list
+    disambiguation: str = ""
 
 
 class DetectorTask(QThread):
@@ -48,7 +49,7 @@ class DetectorTask(QThread):
         QThread.__init__(self)
         self.dlg = dlg
         self.discid = discid
-        self.disc = None
+        self.releases = None
 
     def run(self):
         tracks = None
@@ -64,7 +65,7 @@ class DetectorTask(QThread):
         self.dlg.message.emit("Getting data from musicbrainz...")
 
         try:
-            self.disc = get_cd_info(self.discid)
+            self.releases = get_releases(self.discid)
         except Exception:
             util.show_error("Could not find CD info in musicbrainz")
             if not tracks:
@@ -73,21 +74,26 @@ class DetectorTask(QThread):
 
             # This isn't very good, especially if the not found disc has multiple
             # artists. UI needs to handle this case properly.
-            self.disc = CDInfo(
-                artist="Unknown",
-                album="Unknown",
-                discno=1,
-                year=1980,
-                multi_artist=False,
-                set_size=1,
-                cover_art=None,
-                tracks=[
-                    TrackInfo(
-                        artist="Unknown", album="Unknown", title="Unknown", trackno=i
-                    )
-                    for i in range(1, tracks + 1)
-                ],
-            )
+            self.releases = [
+                CDInfo(
+                    artist="Unknown",
+                    album="Unknown",
+                    discno=1,
+                    year=1980,
+                    multi_artist=False,
+                    set_size=1,
+                    cover_art=None,
+                    tracks=[
+                        TrackInfo(
+                            artist="Unknown",
+                            album="Unknown",
+                            title="Unknown",
+                            trackno=i,
+                        )
+                        for i in range(1, tracks + 1)
+                    ],
+                ),
+            ]
 
 
 class DetectionDialog(QDialog):
@@ -115,7 +121,68 @@ class DetectionDialog(QDialog):
         self.resize(self.sizeHint())
 
     def _done(self):
-        self.disc = self.task.disc
+        rels = self.task.releases
+        if not rels:
+            raise Exception(f"did not find any release for disc")
+
+        if len(rels) > 1:
+            self.disc = self._choose_release(rels)
+        else:
+            self.disc = rels[0]
+
+        self.accept()
+
+    def _choose_release(self, releases):
+        chooser = ReleasesDialog(self, releases)
+        chooser.exec_()
+        return chooser.release
+
+
+class ReleasesDialog(util.compile_ui("releases.ui")):
+    def __init__(self, parent, releases):
+        super().__init__(parent)
+        self.releases = releases
+        self.choice = 0
+        self.release = releases[0]
+        self.btnOk.clicked.connect(self._done)
+        self.lstReleases.itemSelectionChanged.connect(self._release_changed)
+
+        for r in releases:
+            alias = f"{r.artist} / {r.album}"
+            self.lstReleases.addItem(alias)
+
+        self._set_release()
+
+        util.restore_ui(self, "releases")
+
+    def _release_changed(self):
+        sel = self.lstReleases.selectedItems()
+        if sel:
+            self.choice = self.lstReleases.row(sel[0])
+        else:
+            self.choice = 0
+        self.release = self.releases[self.choice]
+        self._set_release()
+
+    def _set_release(self):
+        self.lbArtist.setText(self.release.artist)
+        self.lbAlbum.setText(self.release.album)
+        self.lbYear.setText(str(self.release.year))
+        self.lbDisambiguation.setText(self.release.disambiguation)
+
+        start = self.relInfo.indexOf(self.lbTracks)
+        for i in range(start + 1, self.relInfo.count() - 2):
+            item = self.relInfo.itemAt(start + 1)
+            self.relInfo.removeItem(item)
+            item.widget().hide()
+
+        for t in self.release.tracks:
+            label = QLabel()
+            label.setText(t.title)
+            self.relInfo.insertWidget(self.relInfo.count() - 1, label)
+
+    def _done(self):
+        util.save_ui(self, "releases")
         self.accept()
 
 
@@ -167,15 +234,15 @@ def get_disc_info():
     )
 
 
-def get_cd_info(discid):
+def get_releases(discid):
     ret = mb.get_releases_by_discid(discid)
     releases = ret.get("disc", {}).get("release-list")
     if not releases:
-        print("no rel")
-        return None
+        raise Exception(f"no release found for {discid}")
+    return [get_cd_info(r, discid) for r in releases]
 
-    rel = releases[0]
 
+def get_cd_info(rel, discid):
     discno = None
     for medium in rel["medium-list"]:
         for disc in medium["disc-list"]:
@@ -185,8 +252,7 @@ def get_cd_info(discid):
         if discno:
             break
     else:
-        print("cannot find disc no")
-        return None
+        raise Exception("could not find disc no")
 
     relid = rel["id"]
     ret = mb.get_release_by_id(
@@ -218,8 +284,7 @@ def get_cd_info(discid):
             tracks = medium["track-list"]
             break
     else:
-        print("cannot find tracks")
-        return None
+        raise Exception("cannot find tracks")
 
     atracks = []
     found_artists = set()
@@ -246,17 +311,18 @@ def get_cd_info(discid):
     atracks = sorted(atracks, key=lambda t: t.trackno)
 
     cover_art = None
-    try:
-        art = mb.get_image_list(relid)
-        for img in art["images"]:
-            if img["back"]:
-                continue
+    if rel.get("cover-art-archive").get("artwork") == "true":
+        try:
+            art = mb.get_image_list(relid)
+            for img in art["images"]:
+                if img["back"]:
+                    continue
 
-            cover_art = util.http_get(img["image"])
-            break
-    except Exception as e:
-        util.print_error()
-        pass
+                cover_art = util.http_get(img["image"])
+                break
+        except Exception as e:
+            util.print_error()
+            pass
 
     return CDInfo(
         artist=album_artist,
@@ -267,6 +333,7 @@ def get_cd_info(discid):
         set_size=set_size,
         multi_artist=len(found_artists) > 1,
         cover_art=cover_art,
+        disambiguation=rel.get("disambiguation"),
     )
 
 
@@ -280,6 +347,7 @@ if __name__ == "__main__":
     # - kLu3X6F6GwZwCwvdhCVQs4R9iPc- : second disc with data track (The Ocean - Precambrian)
     # - SCP4nE6BDCTkQnHMzs6LiBuHCdg- : multiple artists (Merry Axemas)
     # - VsCC5lu9uDTPZO5uUG6BiQ_OziI- : re-issued + bonus tracks (King Diamond - Abigail)
+    # - 5vdHnGO7X5GvTQvzRhwMhGxW6_0- : release with a lot of stuff (Kate Bush - Hounds of Love)
     discid = "dCZWjhrnNC_JSgv9lqSZQ_SPc3c-"
 
     if sys.argv[-1] == "-d":
@@ -288,5 +356,8 @@ if __name__ == "__main__":
     elif len(sys.argv) == 2:
         discid = sys.argv[1]
 
-    cd = get_cd_info(discid)
-    pprint.pprint(cd.__dict__)
+    rels = get_releases(discid)
+    for r in rels:
+        if r.cover_art:
+            r.cover_art = True
+        pprint.pprint(r.__dict__)

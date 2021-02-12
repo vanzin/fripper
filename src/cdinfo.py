@@ -195,6 +195,8 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
     def _go(self):
         util.save_ui(self, "cdinfo")
 
+        d = self.disc
+
         config = {
             "Target directory": self.leTarget,
             "Encoder": self.leEncoder,
@@ -205,23 +207,21 @@ class InfoDialog(util.compile_ui("cdinfo.ui")):
                 QMessageBox.critical(self, "Error", f"{k} is required.")
                 return
 
-        cmd_vars = cmd_fmt_variables(
-            self.disc.tracks[0], "workdir", "input", "output", "ext"
-        )
+        cmd_vars = cmd_fmt_variables(d.tracks[0], "workdir", "input", "output", "ext")
         try:
             self.leEncoder.text().format(**cmd_vars)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Invalid encoder command: {e}")
             return
 
-        dest_vars = dest_fmt_variables(self.disc, self.disc.tracks[0], "ext")
+        d.discno = int(self.leDisc.text())
+        dest_vars = dest_fmt_variables(d, d.tracks[0], "ext")
         try:
             self.leTemplate.text().format(**dest_vars)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Invalid file name template: {e}")
             return
 
-        d = self.disc
         d.artist = self.leArtist.text()
         d.album = self.leAlbum.text()
         d.year = int(self.leYear.text())

@@ -115,13 +115,13 @@
                </sizepolicy>
               </property>
               <property name="inputMask">
-               <string/>
+               <string>##</string>
               </property>
               <property name="maxLength">
                <number>2</number>
               </property>
               <property name="readOnly">
-               <bool>true</bool>
+               <bool>false</bool>
               </property>
              </widget>
             </item>
