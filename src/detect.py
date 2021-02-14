@@ -170,11 +170,12 @@ class ReleasesDialog(util.compile_ui("releases.ui")):
         self.lbYear.setText(str(self.release.year))
         self.lbDisambiguation.setText(self.release.disambiguation)
 
-        start = self.relInfo.indexOf(self.lbTracks)
-        for i in range(start + 1, self.relInfo.count() - 2):
-            item = self.relInfo.itemAt(start + 1)
+        start = self.relInfo.indexOf(self.lbTracks) + 1
+        end = self.relInfo.count() - 1
+        for i in range(start, end):
+            item = self.relInfo.itemAt(start)
+            item.widget().close()
             self.relInfo.removeItem(item)
-            item.widget().hide()
 
         for t in self.release.tracks:
             label = QLabel()
@@ -244,10 +245,12 @@ def get_releases(discid):
 
 def get_cd_info(rel, discid):
     discno = None
+    album = None
     for medium in rel["medium-list"]:
         for disc in medium["disc-list"]:
             if disc["id"] == discid:
                 discno = int(medium["position"])
+                album = medium["title"]
                 break
         if discno:
             break
@@ -259,8 +262,6 @@ def get_cd_info(rel, discid):
         relid, includes=["artists", "recordings", "media", "artist-credits"]
     )
     rel = ret.get("release")
-
-    album = rel["title"]
 
     date = rel["date"]
     fmts = [
@@ -314,12 +315,18 @@ def get_cd_info(rel, discid):
     if rel.get("cover-art-archive").get("artwork") == "true":
         try:
             art = mb.get_image_list(relid)
+            pos = 0
             for img in art["images"]:
-                if img["back"]:
+                if not "Front" in img.get("types", []):
                     continue
 
-                cover_art = util.http_get(img["image"])
-                break
+                if not cover_art or pos == discno:
+                    cover_art = util.http_get(img["image"])
+
+                if pos == discno:
+                    break
+
+                pos += 1
         except Exception as e:
             util.print_error()
             pass
@@ -348,6 +355,7 @@ if __name__ == "__main__":
     # - SCP4nE6BDCTkQnHMzs6LiBuHCdg- : multiple artists (Merry Axemas)
     # - VsCC5lu9uDTPZO5uUG6BiQ_OziI- : re-issued + bonus tracks (King Diamond - Abigail)
     # - 5vdHnGO7X5GvTQvzRhwMhGxW6_0- : release with a lot of stuff (Kate Bush - Hounds of Love)
+    # - RBiq_Z3vfD7L_dPbTCeeM3BL5mU- : part of a "remasters" collection (Judas Priest - Turbo)
     discid = "dCZWjhrnNC_JSgv9lqSZQ_SPc3c-"
 
     if sys.argv[-1] == "-d":
