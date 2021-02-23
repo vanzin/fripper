@@ -245,12 +245,12 @@ def get_releases(discid):
 
 def get_cd_info(rel, discid):
     discno = None
-    album = None
+    album = rel.get("title")
     for medium in rel["medium-list"]:
         for disc in medium["disc-list"]:
             if disc["id"] == discid:
                 discno = int(medium["position"])
-                album = medium["title"]
+                album = medium.get("title", album)
                 break
         if discno:
             break
