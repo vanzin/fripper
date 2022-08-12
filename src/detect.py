@@ -108,6 +108,8 @@ class DetectionDialog(QDialog):
         hbox.setStretch(0, 1)
         self.setLayout(hbox)
 
+        self.disc = None
+
         self._set_message("Detecting the disc...")
         self.task = DetectorTask(self, discid)
 
@@ -122,13 +124,12 @@ class DetectionDialog(QDialog):
 
     def _done(self):
         rels = self.task.releases
-        if not rels:
-            raise Exception(f"did not find any release for disc")
 
-        if len(rels) > 1:
-            self.disc = self._choose_release(rels)
-        else:
-            self.disc = rels[0]
+        if rels:
+            if len(rels) > 1:
+                self.disc = self._choose_release(rels)
+            else:
+                self.disc = rels[0]
 
         self.accept()
 

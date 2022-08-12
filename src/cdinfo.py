@@ -2,6 +2,9 @@
 import os
 
 import util
+from PyQt5.QtCore import QBuffer
+from PyQt5.QtCore import QByteArray
+from PyQt5.QtCore import QIODevice
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QFileDialog
@@ -90,10 +93,24 @@ class CoverLabel(QLabel):
         if not self.cover_data:
             return
 
-        self.cover = QPixmap()
-        self.cover.loadFromData(self.cover_data)
+        cover = QPixmap()
+        cover.loadFromData(self.cover_data)
+        size = cover.size()
 
-        size = self.cover.size()
+        max_size = 1000
+        if size.width() > max_size or size.height() > max_size:
+            cover = cover.scaled(
+                max_size, max_size, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
+            size = cover.size()
+
+            bytes = QByteArray()
+            buf = QBuffer(bytes)
+            buf.open(QIODevice.WriteOnly)
+            cover.save(buf, "JPG")
+            self.cover_data = buf.data()
+
+        self.cover = cover
         self.setToolTip(f"{size.width()} x {size.height()}")
         self._scale_cover()
 
