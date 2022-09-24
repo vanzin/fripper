@@ -108,7 +108,7 @@ class CoverLabel(QLabel):
             buf = QBuffer(bytes)
             buf.open(QIODevice.WriteOnly)
             cover.save(buf, "JPG")
-            self.cover_data = buf.data()
+            self.cover_data = bytes.data()
 
         self.cover = cover
         self.setToolTip(f"{size.width()} x {size.height()}")
